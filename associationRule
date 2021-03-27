@@ -1,0 +1,41 @@
+
+from pyspark import SparkConf
+from pyspark import SparkContext
+from pyspark.ml.fpm import FPGrowth
+from pyspark.sql import SparkSession
+
+
+
+#FPGROWTH
+sc = SparkContext.getOrCreate(SparkConf().setMaster("local[*]"))
+spark = SparkSession(sc)
+
+print("***********************************************************************************************************")
+
+df = sc.textFile("/home/kubra/PycharmProjects/Recom_Data/SepOct2020ItemList.txt").map(lambda line: (line.split(","), ) ).toDF()#.limit(5000)
+df.show(50, truncate=False)
+df.printSchema()
+
+# Dict_Null = {col:df.filter(df[col].isNull()).count() for col in df.columns} #CHECK IF THERE IS NULL VALUES
+
+#FPGrowth Algo
+
+
+fp = FPGrowth(itemsCol="_1", minSupport=0.0006, minConfidence=0.0006)
+fpm = fp.fit(df)
+fpm.setPredictionCol("newPrediction")
+fpm.freqItemsets.show(5, truncate=False)
+fpm.associationRules.show(100, truncate=False)
+
+
+rules = fpm.associationRules.select([c for c in fpm.associationRules.columns]).toPandas() #select all columns in the result
+                                                                                        #and convert to dataframe
+
+
+rules.to_csv('associationSepOct.csv') #save the results to a csv file
+
+fpm.transform(df).select(("newPrediction")).toPandas().to_csv("newPredictionSepOct.csv")
+
+
+
+
